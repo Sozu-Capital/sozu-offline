@@ -1,0 +1,87 @@
+{
+  "observedAt": "2026-10-26T09:14:29.584Z",
+  "network": "testnet",
+  "rpcUrl": "https://soroban-testnet.stellar.org",
+  "vault": "CDSCQSVWKTYR7EUJK5EQXIFI4L2C4LCPQOIUYP6PMG6KW4O2BZGCRLLV",
+  "usdc": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+  "protocolVaultId": "0101010101010101010101010101010101010101010101010101010101010101",
+  "deployedWasmHash": "afc28a5d893346a7245026aaa7de1962b44b0d36222589e51c83095c2b8fe861",
+  "instanceLiveUntilLedger": 5507968,
+  "transactions": [
+    {
+      "hash": "579418f7cba7d72bcb5c1d8523ad3d8c40485b4025c825b0609295f42c9c6b28",
+      "ledger": 5390141,
+      "noteId": "e435d4bd42beabc8efa5ac9a8b62ce0f",
+      "wireHash": "42ada72f53b57f897ae1442e48f6c3e106cad179c20f4a2b90d9047d819f9403",
+      "wireBytes": 243,
+      "protocolVaultId": "0101010101010101010101010101010101010101010101010101010101010101",
+      "settler": "GBTZA33Y3XT3U3WOZXG6Q7GJ7NDZJTBAWPKPAE4KMWUMFROGZEVZN2SC",
+      "ok": true,
+      "reason": null,
+      "fee": "100000",
+      "vaultEvents": [
+        {
+          "topics": [
+            {
+              "symbol": "settled"
+            }
+          ],
+          "data": {
+            "vec": [
+              {
+                "bytes": "e435d4bd42beabc8efa5ac9a8b62ce0f"
+              },
+              {
+                "i128": "100000"
+              }
+            ]
+          }
+        }
+      ],
+      "usdcTransfers": [
+        {
+          "from": "CDSCQSVWKTYR7EUJK5EQXIFI4L2C4LCPQOIUYP6PMG6KW4O2BZGCRLLV",
+          "to": "GBTZA33Y3XT3U3WOZXG6Q7GJ7NDZJTBAWPKPAE4KMWUMFROGZEVZN2SC",
+          "amount": "10000"
+        },
+        {
+          "from": "CDSCQSVWKTYR7EUJK5EQXIFI4L2C4LCPQOIUYP6PMG6KW4O2BZGCRLLV",
+          "to": "GBTZA33Y3XT3U3WOZXG6Q7GJ7NDZJTBAWPKPAE4KMWUMFROGZEVZN2SC",
+          "amount": "100000"
+        }
+      ]
+    },
+    {
+      "hash": "7e914fbd6249a7e7ba9ccd5e44ee279337a85340222d34f6d371783c1a41a98d",
+      "ledger": 5390145,
+      "noteId": "e435d4bd42beabc8efa5ac9a8b62ce0f",
+      "wireHash": "027a6e32a8caca5a5f573ab2f847b3e30b9fba721e1d46be7d23f826fd46fd5a",
+      "wireBytes": 243,
+      "protocolVaultId": "0101010101010101010101010101010101010101010101010101010101010101",
+      "settler": "GBTZA33Y3XT3U3WOZXG6Q7GJ7NDZJTBAWPKPAE4KMWUMFROGZEVZN2SC",
+      "ok": false,
+      "reason": "note-used",
+      "fee": "0",
+      "vaultEvents": [
+        {
+          "topics": [
+            {
+              "symbol": "rejected"
+            }
+          ],
+          "data": {
+            "vec": [
+              {
+                "bytes": "e435d4bd42beabc8efa5ac9a8b62ce0f"
+              },
+              {
+                "string": "note-used"
+              }
+            ]
+          }
+        }
+      ],
+      "usdcTransfers": []
+    }
+  ]
+}

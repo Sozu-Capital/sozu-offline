@@ -95,3 +95,48 @@ fn collateral_rejection_does_not_erase_an_earlier_spent_note() {
     assert_eq!(token_client.balance(&first), 100_000);
     assert_eq!(token_client.balance(&second), 0);
 }
+
+#[test]
+fn archived_spent_note_is_restored_and_still_rejects_a_second_fee() {
+    use soroban_sdk::testutils::storage::Persistent;
+
+    let env = Env::default();
+    env.mock_all_auths();
+    env.ledger().with_mut(|li| {
+        li.timestamp = 1_600_000_000;
+        li.sequence_number = 100;
+        li.min_persistent_entry_ttl = 10;
+    });
+    let admin = Address::generate(&env);
+    let token_address = env.register(TestToken, ());
+    let token_admin = TestTokenClient::new(&env, &token_address);
+    let token_client = token::Client::new(&env, &token_address);
+    let contract_id = env.register(Vault, (BytesN::from_array(&env, &[1; 32]), token_address, admin));
+    let vault = VaultClient::new(&env, &contract_id);
+    let owner = BytesN::from_array(&env, &[4; 32]);
+    let owner_address = AddressPayload::AccountIdPublicKeyEd25519(owner.clone()).to_address(&env);
+    let key: [u8; 33] = hex::decode("02de0da91a51db50590ecebe84f7708733152db212a04dae042563a84b9b7d66ce").unwrap().try_into().unwrap();
+    token_admin.mint(&owner_address, &20_000_000);
+    vault.deposit(&owner, &BytesN::from_array(&env, &key), &20_000_000, &2_000_000_000);
+    let first = Address::generate(&env);
+    let second = Address::generate(&env);
+    let wire = frozen_wire(&env);
+    assert!(vault.settle(&wire, &first).ok);
+    assert_eq!(token_client.balance(&first), 100_000);
+
+    let spent_ttl = env.as_contract(&contract_id, || {
+        env.storage().persistent().get_ttl(&DataKey::Spent(BytesN::from_array(&env, &[2; 16])))
+    });
+    // Keep the cheque unexpired in wall-clock time to isolate archival behavior.
+    // SDK 27 emulates Protocol 23+ restoration when archived entries are accessed.
+    env.ledger().with_mut(|li| li.sequence_number += spent_ttl + 1);
+    let duplicate = vault.settle(&wire, &second);
+    assert!(!duplicate.ok);
+    assert_eq!(duplicate.reason, Some(String::from_str(&env, "note-used")));
+    assert_eq!(duplicate.fee, 0);
+    let resources = env.cost_estimate().resources();
+    assert!(resources.disk_read_bytes > 0, "archived data must be read from disk");
+    assert!(resources.write_entries > 0, "restoration must write archived data back");
+    assert_eq!(token_client.balance(&first), 100_000);
+    assert_eq!(token_client.balance(&second), 0);
+}
