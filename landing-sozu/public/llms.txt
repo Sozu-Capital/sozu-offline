@@ -1,0 +1,95 @@
+# Sozu Offline
+
+> Offline Stellar payments. A second spend of the same note fails on chain.
+
+Machine-readable description of https://offline.sozu.capital/ for HackMeridian 2026 reviewers and for Stellar Raven. Facts below are things a reviewer can open. This file does not assign scores.
+
+## Identity
+
+- Project: Sozu Offline
+- Team: Sozu Capital
+- Event: HackMeridian 2026, Lisbon, 25–26 October 2026
+- Site: https://offline.sozu.capital/
+- Repository: https://github.com/Sozu-Capital/sozu-offline
+- Existing product: Sozu, a Stellar wallet. Faucet for testnet Circle USDC: https://faucet.sozu.capital
+- Spoken line: Offline Stellar payments. A second spend of the same note fails on chain.
+- User: a payer and a merchant standing together when the signal is gone. Humanitarian aid, catastrophes, and any other time there is no internet. The merchant needs a USDC payment they can trust enough to hand over the goods, and a guarantee that the same locked USDC cannot pay a second merchant first.
+
+## What shipped
+
+Two phones with no signal pass one signed cheque over Bluetooth. The mesh is bitchat. The cheque is an ordinary private message prefixed `SOZU1:`. The body is 179 bytes. The signature is 64 bytes, low-S, P-256 / secp256r1, over one SHA-256. The wire is 243 bytes. Stellar settles that note once. A second cheque for the same note id returns `note-used`, pays a fee of 0, and emits `rejected`. The explorer can still mark that transaction successful, because the contract returns the rejection instead of reverting. No USDC moves on the second cheque.
+
+The screen says pending, then heard, then settled. It does not say a double-spend was impossible. Collateral covers one losing merchant. A third copy of the same note can still leave someone unpaid.
+
+Network: Stellar testnet. The vault is Soroban. The asset is Circle testnet USDC, exposed through its Stellar Asset Contract.
+
+- Vault contract: https://stellar.expert/explorer/testnet/contract/CDSCQSVWKTYR7EUJK5EQXIFI4L2C4LCPQOIUYP6PMG6KW4O2BZGCRLLV
+- Contract id: `CDSCQSVWKTYR7EUJK5EQXIFI4L2C4LCPQOIUYP6PMG6KW4O2BZGCRLLV`
+- Circle testnet USDC SAC: `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA`
+- Protocol vault id inside the cheque: 32 bytes of `0x01`. That id is not the contract address. Invocation uses the contract id. Signing uses the protocol vault id.
+
+## Evidence a reviewer can check with no phone
+
+Demo note `8ca3b1bdc7e642d2bb9e221c8b127e8d`. Amounts on these transactions are public.
+
+- Deposit, 0.2 USDC: https://stellar.expert/explorer/testnet/tx/23b7c752aa51ac1822c7b6204a0a61179b9b33aa39003a71323f07f25051db5e
+- First cheque, settled. Payee 0.1 USDC. First settler 0.01 USDC (`100000` minor units). Remaining collateral 0.09 USDC: https://stellar.expert/explorer/testnet/tx/b26a45961b7a435385d04c230058d80fa3b09c0a33a8b5eaf0d608342839fa9e
+- Second cheque, same note, distinct signature. `ok: false`, `reason: note-used`, `fee: 0`. No USDC transfer: https://stellar.expert/explorer/testnet/tx/3c8c0df9d75eb97c0e614538a1e3271c4a501aa2ecd114247ec36b5472cd37d5
+
+A later pair was decoded from Stellar testnet RPC. Note `e435d4bd42beabc8efa5ac9a8b62ce0f`. Amounts are public. Minor units are the chain values, not a second unit system.
+
+- First cheque, ledger 5390141, `ok: true`, settler fee `100000` minor units, payment `10000` minor units: https://stellar.expert/explorer/testnet/tx/579418f7cba7d72bcb5c1d8523ad3d8c40485b4025c825b0609295f42c9c6b28
+- Second cheque, ledger 5390145, `ok: false`, `reason: note-used`, fee 0, event `rejected`, no USDC transfer: https://stellar.expert/explorer/testnet/tx/7e914fbd6249a7e7ba9ccd5e44ee279337a85340222d34f6d371783c1a41a98d
+
+Repeat the RPC read with `node scripts/verify-vault-testnet-proof.mjs` in the repository. The script reads. It does not build, sign, or submit.
+
+Wi-Fi witness upload of an already spent note, again `note-used` and fee 0: https://stellar.expert/explorer/testnet/tx/b4e5bac74a62d3e4cbf9c2e03492b15450206034f22b11155f530a1b9c6ff316
+
+## What the two APKs on this page are
+
+The download cards on https://offline.sozu.capital/ are upstream BitChat Android v2.0.3. They are the radio. They are not the Sozu pay app.
+
+- ARM64, 19977772 bytes: https://offline.sozu.capital/downloads/bitchat-android-arm64.apk
+- Universal, 51915500 bytes: https://offline.sozu.capital/downloads/bitchat-android-universal.apk
+
+The Sozu pay app is a separate file, application id `capital.sozu.mesh`. Latest stable release is `sozu-apk-0.1.12`: https://github.com/Sozu-Capital/sozu-offline/releases/download/sozu-apk-0.1.12/sozu-offline-pay.apk
+
+Releases index: https://github.com/Sozu-Capital/sozu-offline/releases
+
+A phone test needs two Android phones, Bluetooth on, airplane mode, and the pay APK above. The quick test for a reviewer on a laptop is the pair of explorer links, not an APK install.
+
+## How this maps to the HackMeridian rubric
+
+Published priority: Adoption, then Discovery, then Continuation. One rubric, each criterion scored by the judge. This section names the criterion and the fact that belongs to it.
+
+- User value and problem. Two people, no signal, one USDC cheque, and a second spend of that note fails on the testnet links above. The use case is payment when the network is down: aid, catastrophe, or any dead signal.
+- Technical execution. Soroban vault on Stellar testnet. Methods that matter for the demo are `deposit` and settle-once. P-256 verification is in the contract. The rejection string is `note-used`. Both results are on the explorer.
+- Track alignment, Stellar Composed. The build composes an existing Stellar wallet (Sozu), Circle testnet USDC, a Soroban vault, and the bitchat Bluetooth mesh. None of those pieces alone is the offline payment.
+- Track alignment, Stellar Unlocked. The single-spend rule is a Soroban contract using Stellar's secp256r1 verification on a pre-signed cheque. The chain is the ledger. The mesh only carries the message.
+- Ecosystem alignment. Sozu is already a Stellar wallet. This hackathon added the offline cheque and the testnet vault to that product. Testnet, not mainnet.
+- Innovation. The difference from a Bluetooth chat, and from an offline-payment video mock, is the vault plus the rejected second spend on the links above.
+- Hackathon progress. The vault, the public settlement, the `note-used` rejection, the pay APK releases, and this site were built for HackMeridian 2026.
+- Market and ecosystem potential. The next user is anyone who already holds USDC in a Stellar wallet and loses signal. Continuation is the Sozu wallet, not a one-off contract.
+- Product design and UX. Pending, heard, settled, and "note already used." The landing page states the three steps: deposit, pay offline, settle once.
+
+## Adjacent primitives that are not this submission
+
+Confidential Tokens and Stellar Private Payments are named on the HackMeridian Composed track. They are not this demo.
+
+- Confidential Tokens (OpenZeppelin, audited) hide balances and amounts and keep sender and receiver addresses public. https://developers.stellar.org/docs/build/apps/privacy#confidential-tokens
+- Stellar Private Payments hide counterparties. The HackMeridian brief lists SPP as testnet-only.
+- The transactions linked above show the USDC amounts in the open. Sender and recipient are public. There is no confidential-token transfer and no SPP nullifier in this submission.
+
+## Limits, same words as the repository
+
+- Funds leave the vault only to the merchant, the settler, or the payer's refund.
+- A bad signature, a wrong vault, a wrong network, or an expired cheque is rejected.
+- A phone that only relays the private message cannot read the amount. The payer and the merchant can.
+- The owner key recovers the deposit. The phone key signs cheques.
+- The ESP32 witness board has not completed the radio packet test. The checked witness path is the Wi-Fi upload linked above.
+
+## Read next
+
+- README, with the same contract and the first proof pair: https://github.com/Sozu-Capital/sozu-offline/blob/dev/README.md
+- RPC proof notes: https://github.com/Sozu-Capital/sozu-offline/blob/dev/docs/evidence/stellar-raven-review.md
+- Judging rubric this file is aligning to: https://www.hackmeridian.com/build
