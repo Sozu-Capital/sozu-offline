@@ -33,6 +33,7 @@ async function relay(t, options) {
   t.after(() => new Promise((resolve) => { server.closeAllConnections(); server.close(resolve); }));
   const base = `http://127.0.0.1:${server.address().port}`;
   return {
+    base,
     post: (body) => fetch(`${base}/api/offline/submit`, {
       method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
     }),
@@ -122,4 +123,28 @@ test("a distinct second cheque for one note exposes note-used without claiming a
   assert.equal(ledger.count, 2);
   assert.equal(ledger.rows[0].noteId, ledger.rows[1].noteId);
   assert.equal(ledger.rows[1].type, "duplicate");
+});
+
+test("a confirmed identical-wire retry keeps its original result after cheque expiry", async (t) => {
+  const f = fixture();
+  let clock = 1_800_000_000;
+  let submissions = 0;
+  const api = await relay(t, { participants: f.participants, now: () => clock, submit: async () => {
+    submissions++;
+    return { ok: true, fee: 100_000n, reason: null, txHash: "1".repeat(64) };
+  } });
+  const first = await (await api.post({ frame: f.frame, settler: f.merchant })).json();
+  clock = 1_800_000_300;
+  const retry = await api.post({ frame: f.frame, settler: f.owner });
+  assert.equal(retry.status, 200);
+  assert.deepEqual(await retry.json(), first);
+  assert.equal(submissions, 1);
+});
+
+test("a malformed request path returns 400 and leaves the relay healthy", async (t) => {
+  const f = fixture();
+  const api = await relay(t, { participants: f.participants, submit: async () => { throw new Error("must-not-submit"); } });
+  const response = await fetch(`${api.base}//[`, { signal: AbortSignal.timeout(1000) });
+  assert.equal(response.status, 400);
+  assert.equal((await fetch(`${api.base}/health`)).status, 200);
 });

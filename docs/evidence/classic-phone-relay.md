@@ -55,7 +55,11 @@ dominio ni servidor de Sozu Wallet para este recorrido manual.
 Las solicitudes se serializan para evitar carreras de secuencia. Dos solicitudes
 del mismo wire comparten el envío y conservan el resultado del primer uploader.
 Los resultados confirmados se guardan en un JSONL local y se recuperan al
-reiniciar. Un segundo cheque distinto para la misma nota se envía al contrato;
+reiniciar; un reintento conserva su resultado incluso si el cheque ya expiró.
+Si el proceso cae después de enviar pero antes de guardar la confirmación,
+el contrato sigue protegiendo la nota, pero un reintento puede generar otra
+transacción de rechazo y pagar su coste de red en XLM.
+Un segundo cheque distinto para la misma nota se envía al contrato;
 si devuelve `note-used`, la respuesta HTTP es 422, con comisión cero y el hash
 de ese rechazo. La página no lo presenta como un pago aceptado.
 
@@ -65,8 +69,8 @@ a cuentas ajenas se rechazan antes de enviar una transacción.
 
 ## Alcance comprobado y pendiente
 
-- Cuatro pruebas HTTP locales cubren liquidación, ledger, rechazo previo al
-  envío, reintentos concurrentes y segundo cheque con `note-used`. El submit de
+- Seis pruebas HTTP locales cubren liquidación, ledger, rechazo previo al
+  envío, reintentos concurrentes y después de expirar, URLs inválidas y segundo cheque con `note-used`. El submit de
   estas pruebas es un doble controlado, no una transacción de testnet.
 - El servicio real comprobó los depósitos de ambos teléfonos al arrancar. Su
   página, `/health`, el ledger vacío y el rechazo de un POST vacío se verificaron

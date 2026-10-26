@@ -67,11 +67,11 @@ export function createClassicRelayServer({ participants, submit, append = () => 
     if (!participant || !accounts.has(payee)) return { status: 403, body: { error: "account-not-enrolled" } };
     if (cheque.network !== 1 || !cheque.vault.equals(Buffer.alloc(32, 1))) return { status: 422, body: { error: "wrong-vault-or-network" } };
     if (cheque.deviceKey.toString("hex") !== participant.deviceKey) return { status: 403, body: { error: "device-key" } };
-    if (cheque.expiry <= BigInt(now()) || cheque.expiry > BigInt(participant.lockedUntil)) return { status: 422, body: { error: "expired-or-unlocked" } };
-    if (cheque.fee !== DEMO_FEE || cheque.amount + cheque.fee > BigInt(participant.collateral)) return { status: 422, body: { error: "fee-or-collateral" } };
     const wireHash = createHash("sha256").update(wire).digest("hex");
     if (cache.has(wireHash)) return outcome(cache.get(wireHash));
     if (inflight.has(wireHash)) return inflight.get(wireHash);
+    if (cheque.expiry <= BigInt(now()) || cheque.expiry > BigInt(participant.lockedUntil)) return { status: 422, body: { error: "expired-or-unlocked" } };
+    if (cheque.fee !== DEMO_FEE || cheque.amount + cheque.fee > BigInt(participant.collateral)) return { status: 422, body: { error: "fee-or-collateral" } };
     if (inflight.size >= 20) return { status: 503, body: { error: "relay-busy" } };
     const work = tail.then(async () => {
       const result = await submit({ wire, settler });
@@ -95,7 +95,9 @@ export function createClassicRelayServer({ participants, submit, append = () => 
   }
 
   return createServer({ requestTimeout: 20_000, headersTimeout: 10_000, maxHeaderSize: 8192 }, async (request, response) => {
-    const path = new URL(request.url, "http://localhost").pathname;
+    let path;
+    try { path = new URL(request.url, "http://localhost").pathname; }
+    catch { return reply(response, 400, { error: "invalid-request-path" }); }
     if (request.method === "GET" && path === "/") {
       response.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", "referrer-policy": "no-referrer" });
       return response.end(relayPage(participants));
