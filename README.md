@@ -65,6 +65,8 @@ An [HD concept video](docs/media/witness/sozu-witness-blueprint-concept-hd.mp4) 
 
 ## Vini testnet traffic
 
+Implementation and evidence: [PR #10](https://github.com/Sozu-Capital/sozu-offline/pull/10).
+
 `scripts/vini-testnet-batch.mjs` uses fresh accounts created with `npx @sozu/faucet@latest claim` (no address). Put the claim JSON files, including each `wallet.secret`, outside this repository. Set `SOZU_VINI_WALLET_FILES` to their semicolon-separated paths, `SOZU_VINI_KEYS` to a local device-key file, `SOZU_VINI_STATE` to a local note-hash store, and `SOZU_VINI_LOG` to a local finalized-event log. No seed belongs in Git or terminal output.
 
 The first three successful faucet accounts own separate 10 USDC testnet deposits and sign fresh `SOZU1:` cheques with the frozen 179-byte body, 64-byte low-S P-256 signature, and 243-byte wire. `deposit 100000000` is a one-time setup per owner. `window 8` and `window 16` use distinct minute targets and one randomly selected settler per window. The software phone state in `protocol/mesh.mjs` validates each cheque before the Wi-Fi witness path in `scripts/witness-upload.mjs` submits one `settle` call. This does not demonstrate a physical mesh transmission. `duplicate` signs a different cheque for an already spent note and checks `note-used` with fee zero. The runner checks its planned amount plus fees against the new collateral before sending; it never selects the demo owner.
