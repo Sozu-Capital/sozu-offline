@@ -34,11 +34,11 @@ class SozuChequeTest {
     }
 
     @Test
-    fun vaultIsTheTestnetContract() {
+    fun vaultUsesTheFrozenProtocolIdRatherThanTheContractAddress() {
         val id = SozuCheque.vaultId()
         assertEquals(32, id.size)
         assertEquals(
-            "e4284ab654f11f928957490ba0a8e2f42e2c4f83914c3fcf61bcab71da0e4c28",
+            "0101010101010101010101010101010101010101010101010101010101010101",
             id.joinToString("") { "%02x".format(it) },
         )
     }

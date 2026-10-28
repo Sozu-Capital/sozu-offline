@@ -11,6 +11,16 @@ on:
         description: Release notes
         required: true
         type: string
+      prerelease:
+        description: Publish as a test version without replacing the stable release
+        required: false
+        default: false
+        type: boolean
+      standalone_test:
+        description: Build a separately installable debug-signed Sozu Testnet app
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -53,9 +63,29 @@ jobs:
 
       - name: Build debug APK
         working-directory: build/bitchat-android
-        run: ./gradlew :app:assembleDebug
+        env:
+          STANDALONE_TEST: ${{ inputs.standalone_test }}
+        run: |
+          if [[ "$STANDALONE_TEST" == "true" ]]; then
+            ./gradlew :app:assembleDebug -PsozuTestBuild=true
+          else
+            ./gradlew :app:assembleDebug
+          fi
+
+      - name: Verify standalone test APK
+        if: ${{ inputs.standalone_test }}
+        run: |
+          set -euo pipefail
+          APK="$(ls build/bitchat-android/app/build/outputs/apk/debug/*universal*.apk | head -1)"
+          cp "$APK" sozu-offline-pay-testnet.apk
+          SDK="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          APKSIGNER="$(ls "$SDK"/build-tools/*/apksigner | sort | tail -1)"
+          "$APKSIGNER" verify --verbose sozu-offline-pay-testnet.apk
+          "$(dirname "$APKSIGNER")/aapt" dump badging sozu-offline-pay-testnet.apk | grep -E "^package:|^application-label:"
+          "$(dirname "$APKSIGNER")/aapt" dump badging sozu-offline-pay-testnet.apk | grep -q "name='capital.sozu.mesh.testnet'"
 
       - name: Sign with the Sozu key
+        if: ${{ !inputs.standalone_test }}
         env:
           SOZU_STORE_B64: ${{ secrets.SOZU_STORE_B64 }}
           SOZU_STORE_PASS: ${{ secrets.SOZU_STORE_PASS }}
@@ -77,6 +107,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ inputs.version }}
           RELEASE_NOTES: ${{ inputs.notes }}
+          PRERELEASE: ${{ inputs.prerelease }}
+          STANDALONE_TEST: ${{ inputs.standalone_test }}
         run: |
           set -euo pipefail
           if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -84,9 +116,18 @@ jobs:
             exit 1
           fi
           tag="sozu-apk-$VERSION"
+          release_flags=()
+          asset="sozu-offline-pay.apk"
+          if [[ "$STANDALONE_TEST" == "true" ]]; then
+            asset="sozu-offline-pay-testnet.apk"
+          fi
+          if [[ "$PRERELEASE" == "true" || "$STANDALONE_TEST" == "true" ]]; then
+            release_flags+=(--prerelease --latest=false)
+          fi
           gh release create "$tag" \
             --repo "$GITHUB_REPOSITORY" \
             --target "${{ github.sha }}" \
             --title "Sozu offline pay $VERSION" \
             --notes "$RELEASE_NOTES" \
-            sozu-offline-pay.apk
+            "${release_flags[@]}" \
+            "$asset"

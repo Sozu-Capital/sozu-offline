@@ -68,7 +68,7 @@ fun SozuPayScreen(
     val names by viewModel.peerNicknames.collectAsStateWithLifecycle()
     val meshMessages by viewModel.messages.collectAsStateWithLifecycle()
     val privateChats by viewModel.privateChats.collectAsStateWithLifecycle()
-    var owner by remember { mutableStateOf(SozuWallet.loadOrCreate(context)) }
+    var owner by remember { mutableStateOf("") }
     var myTag by remember { mutableStateOf(SozuTag.current(context).orEmpty()) }
     val announced = remember { mutableSetOf<String>() }
 
@@ -81,8 +81,8 @@ fun SozuPayScreen(
     var sending by remember { mutableStateOf(false) }
 
     val cents = centsFromDigits(digits)
-    val ownerOk = owner.takeIf(::isValidStellarAddress)
-    val payeeOk = payee.takeIf(::isValidStellarAddress)
+    val ownerOk = owner.takeIf { it.startsWith("G") && StellarStrKey.accountId(it) != null }
+    val payeeOk = payee.takeIf { it.startsWith("G") && StellarStrKey.accountId(it) != null }
     val canSend = selected != null && cents > 0 && ownerOk != null && payeeOk != null && !sending
 
     fun rememberPayee(peerId: String, address: String) {
@@ -95,6 +95,10 @@ fun SozuPayScreen(
         val address = parsed?.address
         if (address == null) {
             error = "Paste a Stellar address or a Sozu QR"
+            return
+        }
+        if (!address.startsWith("G") || StellarStrKey.accountId(address) == null) {
+            error = "This testnet vault pays classic G accounts"
             return
         }
         val peer = selected
@@ -111,12 +115,14 @@ fun SozuPayScreen(
         if (activity != null) {
             runCatching { owner = SozuWallet.ensure(context, activity) }
         }
-        val tag = SozuTag.current(context) ?: return@LaunchedEffect
-        myTag = tag
-        if (tag.isNotBlank()) viewModel.setNickname(tag)
-        if (!isValidStellarAddress(owner) || SozuTag.synced(context) == tag) return@LaunchedEffect
-        val saved = withContext(Dispatchers.IO) { SozuDirectory.publish(tag, owner) }
-        if (saved) SozuTag.markSynced(context, tag)
+        myTag = SozuTag.current(context).orEmpty()
+        if (myTag.isNotBlank()) viewModel.setNickname(myTag)
+    }
+
+    LaunchedEffect(owner, myTag) {
+        if (ownerOk == null || myTag.isBlank() || SozuTag.synced(context) == myTag) return@LaunchedEffect
+        val saved = withContext(Dispatchers.IO) { SozuDirectory.publish(myTag, owner) }
+        if (saved) SozuTag.markSynced(context, myTag)
     }
 
     LaunchedEffect(peers, owner, myTag) {
@@ -191,6 +197,11 @@ fun SozuPayScreen(
         onDispose {
             if (registered) runCatching { manager?.unregisterNetworkCallback(callback) }
         }
+    }
+
+    if (ownerOk == null) {
+        SozuOwnerSetup(onLinked = { owner = it })
+        return
     }
 
     if (scanning) {
@@ -320,13 +331,22 @@ fun SozuPayScreen(
                             ?: throw IllegalArgumentException("That Stellar address is not valid")
                         val ownerId = StellarStrKey.accountId(ownerOk)
                             ?: throw IllegalArgumentException("Your Stellar address is not valid")
+                        val now = System.currentTimeMillis() / 1000L
+                        val lockedUntil = SozuWallet.lockedUntil(context)
+                        if (lockedUntil <= now) {
+                            owner = ""
+                            throw IllegalStateException("Testnet deposit expired; link a fresh account")
+                        }
                         val body = SozuCheque.encodeBody(
                             vault = SozuCheque.vaultId(),
                             noteId = SozuCheque.randomNoteId(),
                             amount = amount,
                             fee = SozuCheque.DEMO_FEE,
                             cap = amount + SozuCheque.DEMO_FEE,
-                            expirySeconds = System.currentTimeMillis() / 1000L + 7L * 24L * 3600L,
+                            expirySeconds = minOf(
+                                now + 7L * 24L * 3600L,
+                                lockedUntil,
+                            ),
                             payee = payeeId,
                             owner = ownerId,
                             deviceKey = signer.compressedPublicKey(),

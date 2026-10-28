@@ -10,10 +10,8 @@ object SozuCheque {
     const val VAULT_CONTRACT = "CDSCQSVWKTYR7EUJK5EQXIFI4L2C4LCPQOIUYP6PMG6KW4O2BZGCRLLV"
     val DEMO_FEE = 100_000L
 
-    fun vaultId(): ByteArray {
-        return StellarStrKey.accountId(VAULT_CONTRACT)
-            ?: error("Vault contract is not a Stellar contract id")
-    }
+    // Config.vault_id is the frozen protocol ID, not the deployed C-address.
+    fun vaultId(): ByteArray = ByteArray(32) { 1 }
     private val USDC = 10_000_000L
     private val ORDER = BigInteger("ffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551", 16)
 
@@ -103,7 +101,8 @@ object StellarStrKey {
         if (decoded.isEmpty()) return null
         val version = decoded[0].toInt() and 0xff
         if (version != 48 && version != 16) return null
-        if (decoded.size != 35) return null
+        // decode() has already verified and removed the two checksum bytes.
+        if (decoded.size != 33) return null
         return decoded.copyOfRange(1, 33)
     }
 

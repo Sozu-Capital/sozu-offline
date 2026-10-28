@@ -1,0 +1,38 @@
+name: Android checks
+
+on:
+  pull_request:
+    paths:
+      - android/**
+      - forks.json
+      - scripts/apply-android-overlay.sh
+      - .github/workflows/android-check.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android-unit-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Read Android pin
+        id: pin
+        run: echo "sha=$(node -p "require('./forks.json').android.sha")" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          repository: permissionlesstech/bitchat-android
+          ref: ${{ steps.pin.outputs.sha }}
+          path: build/bitchat-android
+      - name: Apply overlay
+        run: ./scripts/apply-android-overlay.sh build/bitchat-android
+      - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5
+        with:
+          distribution: temurin
+          java-version: 21.0.11+10.0.LTS
+      - uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
+      - name: Compile app and test Sozu payment boundaries
+        working-directory: build/bitchat-android
+        run: ./gradlew :app:testDebugUnitTest --tests 'com.bitchat.android.ui.pay.*'

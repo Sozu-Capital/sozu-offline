@@ -14,6 +14,7 @@ val normalizedGithubReleaseCertSha256 = githubReleaseCertSha256.get()
     .replace(":", "")
     .trim()
     .lowercase()
+val standaloneTestBuild = providers.gradleProperty("sozuTestBuild").map { it.toBoolean() }.orElse(false).get()
 require(
     normalizedGithubReleaseCertSha256.isEmpty() ||
         normalizedGithubReleaseCertSha256.matches(Regex("[a-f0-9]{64}"))
@@ -28,10 +29,11 @@ android {
 
     defaultConfig {
         applicationId = "capital.sozu.mesh"
+        manifestPlaceholders["sozuAppLabel"] = if (standaloneTestBuild) "Sozu Testnet" else "@string/app_name"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 45
-        versionName = "2.0.8-sozu"
+        versionCode = if (standaloneTestBuild) 46 else 45
+        versionName = if (standaloneTestBuild) "0.1.13-testnet" else "2.0.8-sozu"
         buildConfigField(
             "String",
             "GITHUB_RELEASE_CERT_SHA256",
@@ -53,6 +55,7 @@ android {
 
     buildTypes {
         debug {
+            if (standaloneTestBuild) applicationIdSuffix = ".testnet"
             ndk {
                 // Include x86_64 for emulator support during development
                 abiFilters += listOf("arm64-v8a", "x86_64", "armeabi-v7a", "x86")

@@ -1,6 +1,7 @@
 package com.bitchat.android.util
 
 import java.util.UUID
+import com.bitchat.android.BuildConfig
 
 /**
  * Centralized application-wide constants.
@@ -123,7 +124,7 @@ object AppConstants {
         const val MESSAGE_DEDUP_TIMEOUT_MS: Long = 30_000L
         const val SYSTEM_EVENT_DEDUP_TIMEOUT_MS: Long = 5_000L
         const val ACTION_FORCE_FINISH: String = "com.bitchat.android.ACTION_FORCE_FINISH"
-        const val PERMISSION_FORCE_FINISH: String = "capital.sozu.mesh.permission.FORCE_FINISH"
+        const val PERMISSION_FORCE_FINISH: String = BuildConfig.APPLICATION_ID + ".permission.FORCE_FINISH"
     }
 
     object Media {
